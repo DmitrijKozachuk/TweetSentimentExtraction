@@ -4,13 +4,13 @@
 mode=debug:1600
 
 # Number of attempt for pre-define model
-att_num=14
+att_num=17
 
 # Number of attempt for pre-define model
 weights_att_num=None
 
 # Model (custom filling model_name) [roberta-base]
-base_model=roberta-base
+base_model=distilbert-base-cased
 
 # Model (custom filling model_name) [default]
 head_model=default
