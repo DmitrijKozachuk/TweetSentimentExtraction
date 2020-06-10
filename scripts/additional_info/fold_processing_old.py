@@ -19,8 +19,149 @@ import sys
 
 PAD_ID = 1
 
+class CyclicLR(Callback):
+    """
+    This callback implements a cyclical learning rate policy (CLR).
+    The method cycles the learning rate between two boundaries with
+    some constant frequency, as detailed in this paper (https://arxiv.org/abs/1506.01186).
+    The amplitude of the cycle can be scaled on a per-iteration or 
+    per-cycle basis.
+    This class has three built-in policies, as put forth in the paper.
+    "triangular":
+        A basic triangular cycle w/ no amplitude scaling.
+    "triangular2":
+        A basic triangular cycle that scales initial amplitude by half each cycle.
+    "exp_range":
+        A cycle that scales initial amplitude by gamma**(cycle iterations) at each 
+        cycle iteration.
+    For more detail, please see paper.
+
+    # Example
+        ```python
+            clr = CyclicLR(base_lr=0.001, max_lr=0.006,
+                                step_size=2000., mode='triangular')
+            model.fit(X_train, Y_train, callbacks=[clr])
+        ```
+
+    Class also supports custom scaling functions:
+        ```python
+            clr_fn = lambda x: 0.5*(1+np.sin(x*np.pi/2.))
+            clr = CyclicLR(base_lr=0.001, max_lr=0.006,
+                                step_size=2000., scale_fn=clr_fn,
+                                scale_mode='cycle')
+            model.fit(X_train, Y_train, callbacks=[clr])
+        ```    
+    # Arguments
+        base_lr: initial learning rate which is the
+            lower boundary in the cycle.
+        max_lr: upper boundary in the cycle. Functionally,
+            it defines the cycle amplitude (max_lr - base_lr).
+            The lr at any cycle is the sum of base_lr
+            and some scaling of the amplitude; therefore 
+            max_lr may not actually be reached depending on
+            scaling function.
+        step_size: number of training iterations per
+            half cycle. Authors suggest setting step_size
+            2-8 x training iterations in epoch.
+        mode: one of {triangular, triangular2, exp_range}.
+            Default 'triangular'.
+            Values correspond to policies detailed above.
+            If scale_fn is not None, this argument is ignored.
+        gamma: constant in 'exp_range' scaling function:
+            gamma**(cycle iterations)
+        scale_fn: Custom scaling policy defined by a single
+            argument lambda function, where 
+            0 <= scale_fn(x) <= 1 for all x >= 0.
+            mode paramater is ignored 
+        scale_mode: {'cycle', 'iterations'}.
+            Defines whether scale_fn is evaluated on 
+            cycle number or cycle iterations (training
+            iterations since start of cycle). Default is 'cycle'.
+    """
+
+    def __init__(self, base_lr=0.001, max_lr=0.006, step_size=2000., mode='triangular',
+                 gamma=1., scale_fn=None, scale_mode='cycle'):
+        super(CyclicLR, self).__init__()
+
+        self.base_lr = base_lr
+        self.max_lr = max_lr
+        self.step_size = step_size
+        self.mode = mode
+        self.gamma = gamma
+        if scale_fn == None:
+            if self.mode == 'triangular':
+                self.scale_fn = lambda x: 1.
+                self.scale_mode = 'cycle'
+            elif self.mode == 'triangular2':
+                self.scale_fn = lambda x: 1/(2.**(x-1))
+                self.scale_mode = 'cycle'
+            elif self.mode == 'exp_range':
+                self.scale_fn = lambda x: gamma**(x)
+                self.scale_mode = 'iterations'
+        else:
+            self.scale_fn = scale_fn
+            self.scale_mode = scale_mode
+        self.clr_iterations = 0.
+        self.trn_iterations = 0.
+        self.history = {}
+
+        self._reset()
+
+    def _reset(self, new_base_lr=None, new_max_lr=None,
+               new_step_size=None):
+        """Resets cycle iterations.
+        Optional boundary/step size adjustment.
+        """
+        if new_base_lr != None:
+            self.base_lr = new_base_lr
+        if new_max_lr != None:
+            self.max_lr = new_max_lr
+        if new_step_size != None:
+            self.step_size = new_step_size
+        self.clr_iterations = 0.
+
+    def clr(self):
+        cycle = np.floor(1+self.clr_iterations/(2*self.step_size))
+        x = np.abs(self.clr_iterations/self.step_size - 2*cycle + 1)
+        if self.scale_mode == 'cycle':
+            return self.base_lr + (self.max_lr-self.base_lr)*np.maximum(0, (1-x))*self.scale_fn(cycle)
+        else:
+            return self.base_lr + (self.max_lr-self.base_lr)*np.maximum(0, (1-x))*self.scale_fn(self.clr_iterations)
+
+    def on_train_begin(self, logs={}):
+        logs = logs or {}
+
+        if self.clr_iterations == 0:
+            K.set_value(self.model.optimizer.lr, self.base_lr)
+        else:
+            K.set_value(self.model.optimizer.lr, self.clr())        
+
+    def on_batch_end(self, epoch, logs=None):
+
+        logs = logs or {}
+        self.trn_iterations += 1
+        self.clr_iterations += 1
+
+        self.history.setdefault('lr', []).append(K.get_value(self.model.optimizer.lr))
+        self.history.setdefault('iterations', []).append(self.trn_iterations)
+
+        for k, v in logs.items():
+            self.history.setdefault(k, []).append(v)
+
+        clr_val = self.clr()
+        K.set_value(self.model.optimizer.lr, clr_val)
+
+        print(f' lr:{clr_val:.7f}') #self.model.optimizer.lr.numpy
+
 def fold_processing(params):
-    
+
+    if params["model_name"] in ["default", "v2.0"]:
+        MAX_LEN = 96
+    elif params["model_name"] in ['xlnet-base-cased', 'xlnet-large-cased']:
+        MAX_LEN = 107
+    else:
+        assert False, "unknown model_name param"
+
     ################################### INPUT DATA ###################################
 
     def read_train():
@@ -42,14 +183,20 @@ def fold_processing(params):
     test_df = read_test()
     submission_df = read_submission()
 
-    MAX_LEN = 96
-    PATH = '../input/tf-roberta/'
-    tokenizer = tokenizers.ByteLevelBPETokenizer(
-        vocab_file=PATH+'vocab-roberta-base.json', 
-        merges_file=PATH+'merges-roberta-base.txt', 
-        lowercase=True,
-        add_prefix_space=True
-    )
+
+    if params["model_name"] in ["default", "v2.0"]:
+        PATH = '../input/tf-roberta/'
+        tokenizer = tokenizers.ByteLevelBPETokenizer(
+            vocab_file=PATH+'vocab-roberta-base.json', 
+            merges_file=PATH+'merges-roberta-base.txt', 
+            lowercase=True,
+            add_prefix_space=True
+        )
+    elif params["model_name"] in ['xlnet-base-cased', 'xlnet-large-cased']:
+        tokenizer = XLNetTokenizer.from_pretrained(params["model_name"])
+    else:
+        assert False, "unknown model_name param"
+
     sentiment_id = {'positive': 1313, 'negative': 2430, 'neutral': 7974}
 
     ################################### TRAIN DATA ###################################
@@ -75,10 +222,16 @@ def fold_processing(params):
             chars[idx - 1] = 1
 
         # ID_OFFSETS (offsets = [(start1, finish1), .., (startN, finishN)])
-        enc = tokenizer.encode(text1) 
+        if params["model_name"] in ["default", "v2.0"]:
+            tokens = tokenizer.encode(text1).ids
+        elif params["model_name"] in ['xlnet-base-cased', 'xlnet-large-cased']:
+            tokens = tokenizer.encode(text1)
+        else:
+            assert False, "unknown model_name param"
+
         offsets = []
         idx = 0
-        for t in enc.ids:
+        for t in tokens:
             w = tokenizer.decode([t])
             offsets.append((idx, idx + len(w)))
             idx += len(w)
@@ -90,16 +243,14 @@ def fold_processing(params):
                 toks.append(i) 
 
         s_tok = sentiment_id[train_df.loc[k,'sentiment']]
-    #         input_ids[k,:len(enc.ids) + 5] = [0] + enc.ids + [2, 2] + [s_tok] + [2]
-    #         attention_mask[k,:len(enc.ids) + 5] = 1
         if params["label_consider_type"] == "right":
             LEFT_PAD_LEN = 1
-            input_ids[k,:len(enc.ids)+5] = [0] + enc.ids + [2,2] + [s_tok] + [2]
-            attention_mask[k,:len(enc.ids)+5] = 1
+            input_ids[k,:len(tokens)+5] = [0] + tokens + [2,2] + [s_tok] + [2]
+            attention_mask[k,:len(tokens)+5] = 1
         elif params["label_consider_type"] == "left":
             LEFT_PAD_LEN = 2
-            input_ids[k,:len(enc.ids)+3] = [0, s_tok] + enc.ids + [2]
-            attention_mask[k,:len(enc.ids)+3] = 1
+            input_ids[k,:len(tokens)+3] = [0, s_tok] + tokens + [2]
+            attention_mask[k,:len(tokens)+3] = 1
         else:
             assert False, "unknown label_consider_type param"
 
@@ -120,16 +271,14 @@ def fold_processing(params):
         text1 = " "+" ".join(test_df.loc[k,'text'].split())
         enc = tokenizer.encode(text1)                
         s_tok = sentiment_id[test_df.loc[k,'sentiment']]
-        test_word_ids[k,:len(enc.ids)+5] = [0] + enc.ids + [2,2] + [s_tok] + [2]
-        test_mask[k,:len(enc.ids)+5] = 1
         if params["label_consider_type"] == "right":
             LEFT_PAD_LEN = 1
-            test_word_ids[k,:len(enc.ids)+5] = [0] + enc.ids + [2,2] + [s_tok] + [2]
-            test_mask[k,:len(enc.ids)+5] = 1
+            test_word_ids[k,:len(tokens)+5] = [0] + tokens + [2,2] + [s_tok] + [2]
+            test_mask[k,:len(tokens)+5] = 1
         elif params["label_consider_type"] == "left":
             LEFT_PAD_LEN = 2
-            test_word_ids[k,:len(enc.ids)+3] = [0, s_tok] + enc.ids + [2]
-            test_mask[k,:len(enc.ids)+3] = 1
+            test_word_ids[k,:len(tokens)+3] = [0, s_tok] + tokens + [2]
+            test_mask[k,:len(tokens)+3] = 1
         else:
             assert False, "unknown label_consider_type param"
 
@@ -152,9 +301,17 @@ def fold_processing(params):
                 pred_ = text # IMPROVE CV/LB with better choice here
             else:
                 cleaned_text = " " + " ".join(text.split())
+
+                if params["model_name"] in ["default", "v2.0"]:
+                    tokens = tokenizer.encode(cleaned_text).ids
+                elif params["model_name"] in ['xlnet-base-cased', 'xlnet-large-cased']:
+                    tokens = tokenizer.encode(cleaned_text)
+                else:
+                    assert False, "unknown model_name param"
+
                 encoded_text = tokenizer.encode(cleaned_text)
-                pred_ids = encoded_text.ids[a - LEFT_PAD_LEN: b - LEFT_PAD_LEN + 1]
-                pred_ = tokenizer.decode(pred_ids)
+                pred_tokens = tokens[a - LEFT_PAD_LEN: b - LEFT_PAD_LEN + 1]
+                pred_ = tokenizer.decode(pred_tokens)
             pred += [pred_]
 
         if out_prefix:
@@ -253,10 +410,21 @@ def fold_processing(params):
         att_ = att[:, :max_len]
         tok_ = tok[:, :max_len]
 
-        config = RobertaConfig.from_pretrained(PATH+'config-roberta-base.json')
-        bert_model = TFRobertaModel.from_pretrained(PATH+'pretrained-roberta-base.h5',config=config)
-        # https://huggingface.co/transformers/model_doc/roberta.html?highlight=tfrobertamodel#tfrobertamodel
-        x = bert_model(ids_, attention_mask=att_, token_type_ids=tok_)
+        if params["model_name"] in ["default", "v2.0"]:
+            config = RobertaConfig.from_pretrained(PATH+'config-roberta-base.json')
+            bert_model = TFRobertaModel.from_pretrained(PATH+'pretrained-roberta-base.h5',config=config)
+            # https://huggingface.co/transformers/model_doc/roberta.html?highlight=tfrobertamodel#tfrobertamodel
+            x = bert_model(ids_, attention_mask=att_, token_type_ids=tok_)
+        elif params["model_name"] in ['xlnet-base-cased', 'xlnet-large-cased']:
+            xlnet_model = TFXLNetModel.from_pretrained(params["model_name"])
+            x = xlnet_model(ids_, attention_mask=att_, token_type_ids=tok_)
+        else:
+            assert False, "unknown model_name param"
+
+    #     config = RobertaConfig.from_pretrained(PATH+'config-roberta-base.json')
+    #     bert_model = TFRobertaModel.from_pretrained(PATH+'pretrained-roberta-base.h5',config=config)
+    #     # https://huggingface.co/transformers/model_doc/roberta.html?highlight=tfrobertamodel#tfrobertamodel
+    #     x = bert_model(ids_, attention_mask=att_, token_type_ids=tok_)
 
         x1 = tf.keras.layers.Dropout(0.1)(x[0]) 
         x1 = tf.keras.layers.Conv1D(128, 2, padding='same')(x1)
@@ -293,9 +461,20 @@ def fold_processing(params):
         att_ = att[:, :max_len]
         tok_ = tok[:, :max_len]
 
-        config = RobertaConfig.from_pretrained(PATH+'config-roberta-base.json')
-        bert_model = TFRobertaModel.from_pretrained(PATH+'pretrained-roberta-base.h5',config=config)
-        x = bert_model(ids_,attention_mask=att_,token_type_ids=tok_)
+        if params["model_name"] in ["default", "v2.0"]:
+            config = RobertaConfig.from_pretrained(PATH+'config-roberta-base.json')
+            bert_model = TFRobertaModel.from_pretrained(PATH+'pretrained-roberta-base.h5',config=config)
+            # https://huggingface.co/transformers/model_doc/roberta.html?highlight=tfrobertamodel#tfrobertamodel
+            x = bert_model(ids_, attention_mask=att_, token_type_ids=tok_)
+        elif params["model_name"] in ['xlnet-base-cased', 'xlnet-large-cased']:
+            xlnet_model = TFXLNetModel.from_pretrained(params["model_name"])
+            x = xlnet_model(ids_, attention_mask=att_, token_type_ids=tok_)
+        else:
+            assert False, "unknown model_name param"
+
+    #     config = RobertaConfig.from_pretrained(PATH+'config-roberta-base.json')
+    #     bert_model = TFRobertaModel.from_pretrained(PATH+'pretrained-roberta-base.h5', config=config)
+    #     x = bert_model(ids_,attention_mask=att_,token_type_ids=tok_)
 
         x1 = tf.keras.layers.Dropout(0.1)(x[0])
         x1 = tf.keras.layers.Conv1D(768, 2,padding='same')(x1)
@@ -353,7 +532,7 @@ def fold_processing(params):
             start_proba, end_proba = y_pred[:, :MAX_LEN], y_pred[:, MAX_LEN:]
 
         elif params["loss"] == "CCE":
-            start_proba, end_proba = tuple(pred_model.predict([word_ids, mask, segm_ids], verbose))
+            start_proba, end_proba = tuple(pred_model.predict([word_ids, mask, segm_ids], batch_size=params["batch_size"], verbose=verbose))
         else:
             assert False, "unknown loss param"
         return start_proba, end_proba
@@ -398,13 +577,6 @@ def fold_processing(params):
                 f.write(f'\n[fold: {self.n_fold}, epoch: {abs_epoch}] Val Score : {current:.5f} (time: {(time.time() - self.checkpoint) // 60} min.)')
             self.checkpoint = time.time()
 
-
-    def scheduler(epoch):
-
-        return 3e-5 * 0.2**epoch
-
-    lr_scheduler = LearningRateScheduler(scheduler)
-
     ################################### SEED & SESSION ###################################
 
     def seed_everything(seed):
@@ -425,11 +597,6 @@ def fold_processing(params):
         opt = tf.keras.optimizers.Adam(learning_rate=params["lr"])
     else:
         assert False, "unknown opt_name"
-
-    if params["lr_schedule_name"] == "default":
-        lr_scheduler = lr_scheduler
-    else:
-        assert False, "unknown lr_schedule_name"
 
     ################################### LOGGING ###################################
 
@@ -482,7 +649,7 @@ def fold_processing(params):
 #     val_df = train_df_
 
 #     test_word_ids, test_mask, test_segm_ids = test_word_ids[16:32], test_mask[16:32], test_segm_ids[16:32]
-#     test_df = test_df[16:32]
+#     test_df  = test_df[16:32]
 
 
     print(f'##### FOLD {params["n_fold"]} #####')
@@ -492,7 +659,7 @@ def fold_processing(params):
     best_weights_path = f'{log_dir_path}/{params["n_fold"]}/best_model.h5'
     if params["model_name"] == "default":
         model = build_model(opt)
-    elif params["model_name"] == "v2.0":
+    elif params["model_name"] in ["v2.0", 'xlnet-base-cased', 'xlnet-large-cased']:
         model = build_model2(opt)
     else:
         assert False, "unknown model_name param"
@@ -521,6 +688,26 @@ def fold_processing(params):
             best_weights_path
         )
 
+        if params["lr_schedule_name"] == "default":
+            lr_scheduler = LearningRateScheduler(lambda epoch: 3e-5 * 0.2**epoch)
+        elif params["lr_schedule_name"].split(":")[0] == "CLR":
+            mode = params["lr_schedule_name"].split(":")[1]
+            fold_size = len(tr_word_ids)
+            epoch = fold_size / params["batch_size"]
+            step_size = epoch / 2
+            if mode in ["triangular", "triangular2"]:
+                lr_scheduler = CyclicLR(base_lr=params["base_lr"], max_lr=params["max_lr"], step_size=step_size, mode=mode, scale_mode='iterations')
+            elif mode == "gamma":
+                eps = 1e-9
+                all_iter = params["n_epoch"] * epoch
+                gamma = (eps / (params["max_lr"] - params["base_lr"])) ** (1 / all_iter)
+                print(gamma)
+                lr_scheduler = CyclicLR(base_lr=params["base_lr"], max_lr=params["max_lr"], step_size=step_size, mode='exp_range', scale_mode='iterations', gamma=gamma)
+            else:
+                assert False, "unknown CLR param" 
+        else:
+            assert False, "unknown lr_schedule_name param" 
+
 
         n_remain_epoch = params["n_epoch"] - params["start_epoch"] + 1
 
@@ -529,7 +716,7 @@ def fold_processing(params):
         model.fit(
             [tr_word_ids, tr_mask, tr_segm_ids], tr_out,
             batch_size=params["batch_size"],
-            epochs=n_remain_epoch,
+            epochs=params["n_epoch"],
             callbacks=[
                 custom_callback,
                 lr_scheduler
@@ -562,13 +749,15 @@ params = {
     "model_name": sys.argv[7],                                                 # ML model name
     "opt_name": sys.argv[8],                                                   # Optimizer (custom filling opt_name)
     "lr": float(sys.argv[9]),                                                  # Initial LR
-    "lr_schedule_name": sys.argv[10],                                          # LR checduling (custom filling opt_name)
-    "n_fold": int(sys.argv[11]),                                               # fold for training
-    "start_epoch": int(sys.argv[12]),                                          # start epoch for training
-    "wo_fitting": (sys.argv[13] == "True"),
-    "label_consider_type": sys.argv[14],                                       # way to using positive/nutral/negative label
-    "loss": sys.argv[15],
-    "label_smoothing": float(sys.argv[16]) if not sys.argv[16] == "None" else None
+    "base_lr": float(sys.argv[10]),                                                  # Initial LR
+    "max_lr": float(sys.argv[11]),                                                  # Initial LR
+    "lr_schedule_name": sys.argv[12],                                          # LR checduling (custom filling opt_name)
+    "n_fold": int(sys.argv[13]),                                               # fold for training
+    "start_epoch": int(sys.argv[14]),                                          # start epoch for training
+    "wo_fitting": (sys.argv[15] == "True"),
+    "label_consider_type": sys.argv[16],                                       # way to using positive/nutral/negative label
+    "loss": sys.argv[17],
+    "label_smoothing": float(sys.argv[18]) if not sys.argv[18] == "None" else None
 }
 
 

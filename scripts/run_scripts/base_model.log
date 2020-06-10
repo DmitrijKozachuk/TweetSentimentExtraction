@@ -1,0 +1,129 @@
+############################# CHAMPIONS LIGUE: qualifying stage (N_DEBUG = 16 * 10 (0.5% data)) #############################
+
+############# BERT #############
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-large-cased"), TFBertModel.from_pretrained("bert-large-cased"), 96) # OOM
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-multilingual-uncased"), TFBertModel.from_pretrained("bert-large-cased"), 96) # OOM
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-multilingual-cased"), TFBertModel.from_pretrained("bert-base-multilingual-cased"), 96) # OOM
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-large-uncased-whole-word-masking"), TFBertModel.from_pretrained("bert-large-uncased-whole-word-masking"), 96) # no name error
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-large-cased-whole-word-masking"), TFBertModel.from_pretrained("bert-large-cased-whole-word-masking"), 96) # no name error
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-large-uncased-whole-word-masking-finetuned-squad"), TFBertModel.from_pretrained("bert-large-uncased-whole-word-masking-finetuned-squad"), 96) # no name error
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-large-cased-whole-word-masking-finetuned-squad"), TFBertModel.from_pretrained("bert-large-cased-whole-word-masking-finetuned-squad"), 96) # no name error
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-german-dbmdz-cased"), TFBertModel.from_pretrained("bert-base-german-dbmdz-cased"), 96) # can't load
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-german-dbmdz-uncased"), TFBertModel.from_pretrained("bert-base-german-dbmdz-uncased"), 96) # can't load
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-chinese"), TFBertModel.from_pretrained("bert-base-chinese"), 96) # 0.43231
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-large-uncased"), TFBertModel.from_pretrained("bert-base-uncased"), 96) # 0.57444
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-uncased"), TFBertModel.from_pretrained("bert-base-uncased"), 96) # 0.57493
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-finnish-uncased-v1"), TFBertModel.from_pretrained("bert-base-finnish-uncased-v1"), 96) # 0.58801
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-dutch-cased"), TFBertModel.from_pretrained("bert-base-dutch-cased"), 96) # 0.60148
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-cased-finetuned-mrpc"), TFBertModel.from_pretrained("bert-base-cased-finetuned-mrpc"), 96) # 0.61495
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-finnish-cased-v1"), TFBertModel.from_pretrained("bert-base-finnish-cased-v1"), 96) # 0.62503
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-german-cased"), TFBertModel.from_pretrained("bert-base-german-cased"), 96) # 0.64178
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-cased"), TFBertModel.from_pretrained("bert-base-cased"), 96) # 0.66872
+
+############# OpenAI GPT #############
+# base_model = BaseModel(OpenAIGPTTokenizer.from_pretrained("openai-gpt"), TFOpenAIGPTModel.from_pretrained("openai-gpt"), 96) # empty tokenizer
+
+############# Transformer XL #############
+# base_model = BaseModel(TransfoXLTokenizer.from_pretrained("transfo-xl-wt103"), TFTransfoXLModel.from_pretrained("transfo-xl-wt103"), 96) # parse file error
+
+############# OpenAI GPT 2 #############
+# base_model = BaseModel(GPT2Tokenizer.from_pretrained("gpt2"), TFGPT2Model.from_pretrained("gpt2"), 96) # empty tokenizer
+
+############# RoBERTa #############
+# base_model = BaseModel(RobertaTokenizer.from_pretrained("roberta-large"), TFRobertaModel.from_pretrained("roberta-large"), 96) # no name error
+# base_model = BaseModel(RobertaTokenizer.from_pretrained("roberta-large-mnli"), TFRobertaModel.from_pretrained("roberta-large-mnli"), 96) # no name error
+# base_model = BaseModel(RobertaTokenizer.from_pretrained("distilroberta-base"), TFRobertaModel.from_pretrained("distilroberta-base"), 96) # 0.59428
+# base_model = BaseModel(RobertaTokenizer.from_pretrained("roberta-base"), TFRobertaModel.from_pretrained("roberta-base"), 96) # 0.61344
+
+############# XLNet #############
+# base_model = BaseModel(XLNetTokenizer.from_pretrained("xlnet-large-cased"), TFXLNetModel.from_pretrained("xlnet-large-cased"), 105) # OOM
+# base_model = BaseModel(XLNetTokenizer.from_pretrained("xlnet-base-cased"), TFXLNetModel.from_pretrained("xlnet-base-cased"), 105) # 0.46619
+
+############# XLM #############
+# base_model = BaseModel(XLMTokenizer.from_pretrained("xlm-mlm-en-2048"), TFXLMModel.from_pretrained("xlm-mlm-en-2048"), 96) # OOM
+# base_model = BaseModel(XLMTokenizer.from_pretrained("xlm-mlm-tlm-xnli15-1024"), TFXLMModel.from_pretrained("xlm-mlm-tlm-xnli15-1024"), 96) # no name error
+# base_model = BaseModel(XLMTokenizer.from_pretrained("xlm-mlm-xnli15-1024"), TFXLMModel.from_pretrained("xlm-mlm-xnli15-1024"), 96) # no name error
+# base_model = BaseModel(XLMTokenizer.from_pretrained("xlm-mlm-17-1280"), TFXLMModel.from_pretrained("xlm-mlm-17-1280"), 96) # tokenizer load error
+# base_model = BaseModel(XLMTokenizer.from_pretrained("xlm-mlm-100-1280"), TFXLMModel.from_pretrained("xlm-mlm-100-1280"), 96) # tokenizer load error
+# base_model = BaseModel(XLMTokenizer.from_pretrained("xlm-mlm-ende-1024"), TFXLMModel.from_pretrained("xlm-mlm-ende-1024"), 96) # 0.30403
+# base_model = BaseModel(XLMTokenizer.from_pretrained("xlm-mlm-enfr-1024"), TFXLMModel.from_pretrained("xlm-mlm-enfr-1024"), 96) # 0.44221
+# base_model = BaseModel(XLMTokenizer.from_pretrained("xlm-mlm-enro-1024"), TFXLMModel.from_pretrained("xlm-mlm-enro-1024"), 96) # 0.49439
+# base_model = BaseModel(XLMTokenizer.from_pretrained("xlm-clm-ende-1024"), TFXLMModel.from_pretrained("xlm-clm-ende-1024"), 96) # 0.55143
+# base_model = BaseModel(XLMTokenizer.from_pretrained("xlm-clm-enfr-1024"), TFXLMModel.from_pretrained("xlm-clm-enfr-1024"), 96) # 0.58812
+
+
+############# Distill BERT (wo token_type_ids) #############
+# base_model = BaseModel(DistilBertTokenizer.from_pretrained("distilbert-base-german-cased"), TFDistilBertModel.from_pretrained("distilbert-base-german-cased"), 96) # tokenizer load error
+# base_model = BaseModel(DistilBertTokenizer.from_pretrained("distilbert-base-uncased-distilled-squad"), TFDistilBertModel.from_pretrained("distilbert-base-uncased-distilled-squad"), 96) # 0.60679
+# base_model = BaseModel(DistilBertTokenizer.from_pretrained("distilbert-base-multilingual-cased"), TFDistilBertModel.from_pretrained("distilbert-base-multilingual-cased"), 96) # 0.63921
+# base_model = BaseModel(DistilBertTokenizer.from_pretrained("distilbert-base-uncased"), TFDistilBertModel.from_pretrained("distilbert-base-uncased"), 96) # 0.64091
+# base_model = BaseModel(DistilBertTokenizer.from_pretrained("distilbert-base-cased-distilled-squad"), TFDistilBertModel.from_pretrained("distilbert-base-cased-distilled-squad"), 96) # 0.65001
+# base_model = BaseModel(DistilBertTokenizer.from_pretrained("distilbert-base-cased"), TFDistilBertModel.from_pretrained("distilbert-base-cased"), 96) # 0.65995
+
+############# CTRL #############
+# base_model = BaseModel(CTRLTokenizer.from_pretrained("ctrl"), TFCTRLModel.from_pretrained("ctrl"), 96) # tokenizer load error
+
+############# CamemBERT #############
+# base_model = BaseModel(CamembertTokenizer.from_pretrained("camembert-base"), TFCamembertModel.from_pretrained("camembert-base"), 96) # tokenizer load error
+
+############# ALBERT #############
+# base_model = BaseModel(AlbertTokenizer.from_pretrained("albert-xlarge-v1"), TFAlbertForMaskedLM.from_pretrained("albert-xlarge-v1"), 96) # no name error
+# base_model = BaseModel(AlbertTokenizer.from_pretrained("albert-xxlarge-v1"), TFAlbertForMaskedLM.from_pretrained("albert-xxlarge-v1"), 96) # OOM
+# base_model = BaseModel(AlbertTokenizer.from_pretrained("albert-xxlarge-v2"), TFAlbertForMaskedLM.from_pretrained("albert-xxlarge-v2"), 96) # OOM
+# base_model = BaseModel(AlbertTokenizer.from_pretrained("albert-base-v2"), TFAlbertForMaskedLM.from_pretrained("albert-base-v2"), 96) # 0.36640
+# base_model = BaseModel(AlbertTokenizer.from_pretrained("albert-large-v2"), TFAlbertForMaskedLM.from_pretrained("albert-large-v2"), 96) # 0.45277
+# base_model = BaseModel(AlbertTokenizer.from_pretrained("albert-xlarge-v2"), TFAlbertForMaskedLM.from_pretrained("albert-xlarge-v2"), 96) # 0.45277
+# base_model = BaseModel(AlbertTokenizer.from_pretrained("albert-base-v1"), TFAlbertForMaskedLM.from_pretrained("albert-base-v1"), 96) # 0.52468
+# base_model = BaseModel(AlbertTokenizer.from_pretrained("albert-large-v1"), TFAlbertForMaskedLM.from_pretrained("albert-large-v1"), 96) # 0.52704
+
+############# XLM RoBERTa #############
+# base_model = BaseModel(XLMRobertaTokenizer.from_pretrained("xlm-roberta-base"), TFXLMRobertaModel.from_pretrained("xlm-roberta-base"), 96) # tokenizer OOM
+# base_model = BaseModel(XLMRobertaTokenizer.from_pretrained("xlm-roberta-large"), TFXLMRobertaModel.from_pretrained("xlm-roberta-large"), 96) # tokenizer OOM
+# base_model = BaseModel(XLMRobertaTokenizer.from_pretrained("xlm-roberta-large-finetuned-conll02-dutch"), TFXLMRobertaModel.from_pretrained("xlm-roberta-large-finetuned-conll02-dutch"), 96) # tokenizer OOM
+# base_model = BaseModel(XLMRobertaTokenizer.from_pretrained("xlm-roberta-large-finetuned-conll02-spanish"), TFXLMRobertaModel.from_pretrained("xlm-roberta-large-finetuned-conll02-spanish"), 96) # tokenizer OOM
+# base_model = BaseModel(XLMRobertaTokenizer.from_pretrained("xlm-roberta-large-finetuned-conll03-english"), TFXLMRobertaModel.from_pretrained("xlm-roberta-large-finetuned-conll03-english"), 96) # tokenizer OOM
+# base_model = BaseModel(XLMRobertaTokenizer.from_pretrained("xlm-roberta-large-finetuned-conll03-german"), TFXLMRobertaModel.from_pretrained("xlm-roberta-large-finetuned-conll03-german"), 96) # tokenizer OOM
+
+############# T5 #############
+# base_model = BaseModel(T5Tokenizer.from_pretrained("t5-small"), TFT5Model.from_pretrained("t5-small"), 96) # empty tokenizer
+# base_model = BaseModel(T5Tokenizer.from_pretrained("t5-base"),  TFT5Model.from_pretrained("t5-base"), 96) # empty tokenizer
+# base_model = BaseModel(T5Tokenizer.from_pretrained("t5-large"), TFT5Model.from_pretrained("t5-large"), 96) # tokenizer OOM
+# base_model = BaseModel(T5Tokenizer.from_pretrained("t5-3b"),    TFT5Model.from_pretrained("t5-3b"), 96) # tokenizer OOM
+# base_model = BaseModel(T5Tokenizer.from_pretrained("t5-11b"),   TFT5Model.from_pretrained("t5-11b"), 96) # tokenizer OOM
+
+############# ELECTRA #############
+# base_model = BaseModel(ElectraTokenizer.from_pretrained("google/electra-large-discriminator"), TFElectraModel.from_pretrained("google/electra-large-discriminator"), 96) # no name error
+# base_model = BaseModel(ElectraTokenizer.from_pretrained("google/electra-small-discriminator"), TFElectraModel.from_pretrained("google/electra-small-discriminator"), 96) # 0.50262
+# base_model = BaseModel(ElectraTokenizer.from_pretrained("google/electra-small-generator"), TFElectraModel.from_pretrained("google/electra-small-generator"), 96) # 0.52318
+# base_model = BaseModel(ElectraTokenizer.from_pretrained("google/electra-base-generator"), TFElectraModel.from_pretrained("google/electra-base-generator"), 96) # 0.55318
+# base_model = BaseModel(ElectraTokenizer.from_pretrained("google/electra-base-discriminator"), TFElectraModel.from_pretrained("google/electra-base-discriminator"), 96) # 0.53848
+# base_model = BaseModel(ElectraTokenizer.from_pretrained("google/electra-large-generator"), TFElectraModel.from_pretrained("google/electra-large-generator"), 96) # 0.55823
+
+
+
+
+
+
+################################ CHAMPIONS LIGUE: final (N_DEBUG = 16 * 171 (10% data)) ################################
+
+############# BERT #############
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-finnish-uncased-v1"), TFBertModel.from_pretrained("bert-base-finnish-uncased-v1"), 96) # 0.70626 (0.58801)
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-dutch-cased"), TFBertModel.from_pretrained("bert-base-dutch-cased"), 96) # 0.75422 (0.60148)
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-cased-finetuned-mrpc"), TFBertModel.from_pretrained("bert-base-cased-finetuned-mrpc"), 96) # 0.77953 (0.61495)
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-finnish-cased-v1"), TFBertModel.from_pretrained("bert-base-finnish-cased-v1"), 96) # 0.72162 (0.62503)
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-german-cased"), TFBertModel.from_pretrained("bert-base-german-cased"), 96) # 0.75330 (0.64178)
+# base_model = BaseModel(BertTokenizer.from_pretrained("bert-base-cased"), TFBertModel.from_pretrained("bert-base-cased"), 96) # 0.79251 (0.66872)
+
+############# RoBERTa #############
+# base_model = BaseModel(RobertaTokenizer.from_pretrained("distilroberta-base"), TFRobertaModel.from_pretrained("distilroberta-base"), 96) # 0.75166 (0.59428)
+# base_model = BaseModel(RobertaTokenizer.from_pretrained("roberta-base"), TFRobertaModel.from_pretrained("roberta-base"), 96) # 0.75795 (0.61344)
+
+############# XLM #############
+# base_model = BaseModel(XLMTokenizer.from_pretrained("xlm-clm-enfr-1024"), TFXLMModel.from_pretrained("xlm-clm-enfr-1024"), 96) # 0.58899 (0.58812)
+
+############# Distill BERT (wo token_type_ids) #############
+# base_model = BaseModel(DistilBertTokenizer.from_pretrained("distilbert-base-uncased-distilled-squad"), TFDistilBertModel.from_pretrained("distilbert-base-uncased-distilled-squad"), 96) # 0.78008 (0.60679)
+# base_model = BaseModel(DistilBertTokenizer.from_pretrained("distilbert-base-multilingual-cased"), TFDistilBertModel.from_pretrained("distilbert-base-multilingual-cased"), 96) # 0.78477 (0.63921)
+# base_model = BaseModel(DistilBertTokenizer.from_pretrained("distilbert-base-uncased"), TFDistilBertModel.from_pretrained("distilbert-base-uncased"), 96) # 0.78349 (0.64091)
+# base_model = BaseModel(DistilBertTokenizer.from_pretrained("distilbert-base-cased-distilled-squad"), TFDistilBertModel.from_pretrained("distilbert-base-cased-distilled-squad"), 96) # 0.79425 (0.65001)
+# base_model = BaseModel(DistilBertTokenizer.from_pretrained("distilbert-base-cased"), TFDistilBertModel.from_pretrained("distilbert-base-cased"), 113) # 0.79962 (0.65995)
